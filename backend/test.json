@@ -1,0 +1,1 @@
+{"avg_risk": 35.6, "high": 167, "hours": 24, "last_seen": "2026-03-01T07:21:59.951533+00:00", "low": 2891, "medium": 1473, "status": "CRITICAL", "status_color": "#ff4d6d", "status_simple": "YOUR NETWORK IS UNDER THREAT", "total": 4531, "total_flows": 3380}

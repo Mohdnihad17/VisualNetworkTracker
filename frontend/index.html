@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Network Tracker - SOC Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="v3-overhaul.css">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" as="style">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="dashboard.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Top Navigation Bar -->
+    <header class="topbar">
+        <div class="nav-left">
+            <div class="logo-box">
+                <div class="logo-mark">
+                    <svg class="radar-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        <circle cx="12" cy="13" r="2" />
+                        <path d="M12 11v-2" />
+                        <path d="M12 6v-1" />
+                        <path d="M10 13h-2" />
+                        <path d="M6 13h-1" />
+                        <path d="M14 13h2" />
+                        <path d="M18 13h1" />
+                        <path d="M10.4 11.4l-1.4-1.4" />
+                        <path d="M13.6 11.4l1.4-1.4" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="logo-text">Visual Network Tracker</div>
+                    <div class="logo-sub">Explainable Threat Intelligence</div>
+                </div>
+            </div>
+            <div class="live-indicator">
+                <span class="live-indicator">
+                    <span class="live-dot" id="live-dot"></span>
+                    <span
+                        style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.10em;color:#00d4aa"
+                        id="live-text">LIVE</span>
+                </span>
+            </div>
+            <div class="clock" id="nav-clock">00:00:00</div>
+        </div>
+
+        <div class="nav-center">
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="simple" onclick="switchMode('simple')">Simple</button>
+                <button class="mode-btn" data-mode="executive" onclick="switchMode('executive')">Executive</button>
+                <button class="mode-btn" data-mode="analyst" onclick="switchMode('analyst')">Analyst</button>
+            </div>
+        </div>
+
+        <div class="nav-right">
+            <div class="toggle-switch">
+                <label>
+                    <input type="checkbox" id="training-mode-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">Training Mode</span>
+            </div>
+            <button id="report-btn" onclick="generateAndDownloadReport()" class="btn-generate-report">
+                📄 GENERATE REPORT
+            </button>
+            <button id="reset-btn" onclick="resetDatabase()" title="Reset Database" style="
+                      width:36px;height:36px;
+                      border-radius:50%;
+                      background:rgba(255,255,255,0.03);
+                      border:1px solid 
+                        rgba(255,255,255,0.06);
+                      color:#334155;
+                      font-size:18px;
+                      cursor:pointer;
+                      transition:all 200ms ease;
+                      display:flex;
+                      align-items:center;
+                      justify-content:center;">
+                ↺
+            </button>
+            <button class="btn btn-icon" id="btn-tour" title="Guided Tour">?</button>
+        </div>
+    </header>
+
+    <!-- Alert Panel (Fixed top-right) -->
+    <div id="alert-panel" class="alert-panel"></div>
+
+    <main class="main-container">
+        <!-- ========================================== -->
+        <!-- SPLASH CARDS (VISIBLE ALL MODES)           -->
+        <!-- ========================================== -->
+        <div id="simple-scan-bar-top" style="display:none;
+  text-align:center;
+  padding:32px 20px 24px;
+  margin-bottom:24px">
+
+            <!-- SCAN BUTTON — highlighted -->
+            <button onclick="runSimpleRescan()" id="simple-rescan-btn" style="
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:20px 72px;
+      background:linear-gradient(
+        135deg,
+        rgba(0,212,255,0.18),
+        rgba(167,139,250,0.18));
+      border:2px solid #00d4ff;
+      border-radius:12px;
+      color:#00d4ff;
+      font-family:'Syne',sans-serif;
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:0.08em;
+      cursor:pointer;
+      box-shadow:
+        0 0 24px rgba(0,212,255,0.25),
+        inset 0 0 24px 
+          rgba(0,212,255,0.05);
+      transition:all 0.3s ease">
+                🔄 RESCAN NETWORK
+            </button>
+
+            <!-- Status line below button -->
+            <div style="
+    margin-top:12px;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12px;
+    color:#475569">
+                Last scan:
+                <span id="last-scan-time">—</span>
+                &nbsp;·&nbsp;
+                <span id="scan-status-text" style="color:#00d4ff">
+                    Ready
+                </span>
+            </div>
+
+            <!-- Progress bar -->
+            <div id="rescan-progress" style="
+      display:none;
+      margin-top:16px;
+      max-width:400px;
+      margin-left:auto;
+      margin-right:auto">
+                <div style="
+      height:3px;
+      background:rgba(255,255,255,0.06);
+      border-radius:2px;
+      overflow:hidden">
+                    <div id="rescan-bar" style="
+        height:100%;
+        width:0%;
+        background:linear-gradient(
+          90deg,#00d4ff,#a78bfa);
+        border-radius:2px;
+        transition:width 2.5s ease">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan complete badge -->
+            <div id="scan-complete-badge" style="
+      display:none;
+      margin-top:16px;
+      padding:8px 20px;
+      background:rgba(16,185,129,0.12);
+      border:1px solid 
+        rgba(16,185,129,0.35);
+      border-radius:8px;
+      color:#10b981;
+      font-family:'Space Grotesk',
+        sans-serif;
+      font-size:13px;
+      font-weight:600;
+      display:inline-block">
+                ✓ Scan Complete —
+                Data Updated
+            </div>
+        </div>
+        <section id="splash-section" class="splash-section" style="display:none">
+            <div class="splash-divider"></div>
+            <div class="splash-grid">
+                <div class="splash-card">
+                    <div class="splash-icon">🌐</div>
+                    <div class="splash-number" id="splash-active-hosts">—</div>
+                    <div class="splash-label">Active Hosts</div>
+                </div>
+                <div class="splash-card">
+                    <div class="splash-icon">⚡</div>
+                    <div class="splash-number" id="splash-packets">—</div>
+                    <div class="splash-label">Packets Inspected</div>
+                </div>
+                <div class="splash-card">
+                    <div class="splash-icon">🔍</div>
+                    <div class="splash-number" id="splash-data">—</div>
+                    <div class="splash-label">Data Transferred</div>
+                </div>
+                <div class="splash-card">
+                    <div class="splash-icon">📅</div>
+                    <div class="splash-number" id="splash-uptime">—</div>
+                    <div class="splash-label">System Uptime</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- MODE 3: SIMPLE MODE                        -->
+        <!-- ========================================== -->
+        <div id="simple-scan-hero" style="display:block;text-align:center;
+                    padding:80px 20px">
+            <div style="font-size:52px;
+            margin-bottom:20px">🛡️</div>
+            <div style="
+            font-family:'Syne',sans-serif;
+            font-size:28px;font-weight:700;
+            color:#f0f4f8;margin-bottom:12px">
+                Is your network safe?
+            </div>
+            <div style="
+            font-family:'Space Grotesk',
+              sans-serif;
+            font-size:15px;color:#475569;
+            margin-bottom:32px">
+                Click below to check your live
+                network connections right now
+            </div>
+            <button onclick="runSimpleScan()" style="
+              padding:18px 56px;
+              background:rgba(0,212,255,0.12);
+              border:2px solid 
+                rgba(0,212,255,0.35);
+              border-radius:14px;
+              color:#00d4ff;
+              font-family:'Syne',sans-serif;
+              font-size:16px;font-weight:700;
+              letter-spacing:0.10em;
+              cursor:pointer;">
+                🔍 CHECK MY NETWORK
+            </button>
+            <div id="simple-scan-progress" style="display:none;
+                      margin-top:28px">
+                <div style="
+              height:4px;
+              background:rgba(255,255,255,0.06);
+              border-radius:2px;overflow:hidden;
+              max-width:360px;margin:0 auto">
+                    <div id="simple-scan-bar" style="
+                     height:100%;width:0%;
+                     background:linear-gradient(
+                       90deg,#00d4ff,#a78bfa);
+                     border-radius:2px;
+                     transition:width 3s ease">
+                    </div>
+                </div>
+                <div id="simple-scan-message" style="
+              font-family:'Space Grotesk',
+                sans-serif;
+              font-size:13px;color:#475569;
+              margin-top:14px">
+                    Checking your network...
+                </div>
+            </div>
+            <div id="simple-scan-result" style="
+                 display:none;
+                 margin-top:28px;
+                 max-width:480px;
+                 margin-left:auto;
+                 margin-right:auto;
+                 text-align:left">
+            </div>
+        </div>
+        <div id="simple-mode-content" style="display:none;opacity:0;
+            transition:opacity 700ms ease">
+
+            <div class="health-banner glass-card" id="simple-health-banner" style="display:none;">
+                <div class="health-icon" id="simple-health-icon">✓</div>
+                <div class="health-text">
+                    <h2 id="simple-health-title">Your Network is Healthy</h2>
+                    <p id="simple-health-subtext" class="text-body" style="color:rgba(255,255,255,0.7)">No critical
+                        threats detected.</p>
+                </div>
+            </div>
+
+            <div class="simple-grid" id="simple-kpi-section" style="display:none">
+                <!-- Left Column -->
+                <div class="simple-main-col">
+                    <div class="card glass-card simple-stats-row"
+                        style="background:transparent!important;border:none!important;box-shadow:none!important;gap:16px;">
+                        <div class="simple-kpi-card reveal-card stat-box" style="flex:1">
+                            <div class="kpi-label">Incidents Today</div>
+                            <div class="kpi-number safe" id="simple-incident-count">0</div>
+                            <div class="kpi-bar-track">
+                                <div class="kpi-bar-fill" style="background:#00d4aa;width:0%"
+                                    id="simple-incident-count-bar"></div>
+                            </div>
+                        </div>
+                        <div class="simple-kpi-card reveal-card stat-box" style="flex:1">
+                            <div class="kpi-label">Most Common Threat</div>
+                            <div class="kpi-number warning" id="simple-top-threat" style="font-size:24px;">None</div>
+                            <div class="kpi-bar-track">
+                                <div class="kpi-bar-fill" style="background:#ff9f43;width:0%"
+                                    id="simple-top-threat-bar"></div>
+                            </div>
+                        </div>
+                        <div class="simple-kpi-card reveal-card stat-box" style="flex:1">
+                            <div class="kpi-label">Last Threat Detected</div>
+                            <div class="kpi-number danger" id="simple-last-threat-time" style="font-size:20px;">N/A
+                            </div>
+                            <div class="kpi-bar-track">
+                                <div class="kpi-bar-fill" style="background:#ff4d6d;width:0%"
+                                    id="simple-last-threat-time-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="simple-kpi-card reveal-card health-meter-card">
+                        <div class="kpi-label">Network Health</div>
+                        <div class="kpi-number safe" id="simple-health-pct">100</div>
+                        <div class="kpi-bar-track">
+                            <div class="kpi-bar-fill" style="background:#00d4aa;width:0%" id="simple-health-pct-bar">
+                            </div>
+                        </div>
+                        <p class="text-sm" style="margin-top:14px;">Based on last 30 minutes of activity</p>
+                    </div>
+
+                    <div class="incidents-grid" id="simple-incident-list" style="display:none;">
+                        <div class="incidents-section-title">
+                            Active Incidents — Action Required
+                            <span class="incidents-count-badge" id="incidents-count">0</span>
+                        </div>
+                        <div id="incidents-container">
+                            <!-- JS injected simple incident cards -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="simple-side-col">
+                    <div id="story-feed-panel" class="story-feed-panel">
+                        <div class="test-defenses-title">Story Feed</div>
+                        <div class="story-feed" id="simple-story-feed" style="display:none;">
+                            <!-- JS injected stories -->
+                        </div>
+                        <button class="btn-show-older" id="simple-story-load-more">Show older entries</button>
+                    </div>
+
+                    <div class="test-defenses-panel" style="margin-top: 12px;" id="simple-simulator-container">
+                        <div class="test-defenses-title">🧪 Test Your Network Defenses</div>
+                        <div class="test-defenses-sub">See how your system responds to real attack types — safely</div>
+                        <div class="sim-grid" id="simple-sim-grid">
+                            <button class="attack-btn" data-attack="dos">
+                                <div class="attack-btn-icon">🌊</div>
+                                <div>
+                                    <div class="attack-btn-text">Server Flood</div>
+                                    <div class="attack-btn-sub">Overwhelm your web server with traffic</div>
+                                </div>
+                            </button>
+                            <button class="attack-btn" data-attack="portscan">
+                                <div class="attack-btn-icon">🔍</div>
+                                <div>
+                                    <div class="attack-btn-text">Network Spy</div>
+                                    <div class="attack-btn-sub">Scan your network for open doors</div>
+                                </div>
+                            </button>
+                            <button class="attack-btn" data-attack="bruteforce">
+                                <div class="attack-btn-icon">🔐</div>
+                                <div>
+                                    <div class="attack-btn-text">Password Guesser</div>
+                                    <div class="attack-btn-sub">Attempt repeated logins on your server</div>
+                                </div>
+                            </button>
+                            <button class="attack-btn" data-attack="suspdns">
+                                <div class="attack-btn-icon">📡</div>
+                                <div>
+                                    <div class="attack-btn-text">Hidden Signals</div>
+                                    <div class="attack-btn-sub">Hide communication inside DNS requests</div>
+                                </div>
+                            </button>
+                            <button class="attack-btn" data-attack="lateral">
+                                <div class="attack-btn-icon">🕵️</div>
+                                <div>
+                                    <div class="attack-btn-text">Internal Intruder</div>
+                                    <div class="attack-btn-sub">Simulate an infected device spreading inside</div>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="sim-status hidden" id="simple-sim-status">
+                            <div style="font-size:14px; color:var(--text-primary); margin-bottom:12px;"
+                                id="simple-sim-status-title">⚠️ Simulating attack...</div>
+                            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">Your system is
+                                detecting and logging the threat automatically.</div>
+                            <div class="sim-progress-bg">
+                                <div class="sim-progress-fill" id="simple-sim-progress"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-top:12px;">
+                                <div class="sim-timer" id="simple-sim-timer">0s / 60s</div>
+                                <div class="sim-alert-count" id="simple-sim-alerts">Threats caught so far: 0</div>
+                            </div>
+                            <button class="btn btn-outline" style="width:100%; margin-top:16px;"
+                                id="simple-sim-cancel">Cancel Simulation</button>
+                        </div>
+                        <!-- Debrief Modal Simple -->
+                        <div class="sim-debrief hidden" id="simple-sim-debrief">
+                            <!-- JS injected debrief -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODE 2: EXECUTIVE MODE                     -->
+        <!-- ========================================== -->
+        <div id="executive-mode-content" style="display:none">
+            <div class="exec-dashboard">
+                <!-- Time Range Selector -->
+                <div id="exec-time-selector" style="
+       display:flex;
+       justify-content:center;
+       align-items:center;
+       gap:8px;
+       margin-bottom:24px;
+       flex-wrap:wrap">
+
+                    <span style="
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12px;color:#475569;
+    margin-right:4px">
+                        Showing data for:
+                    </span>
+
+                    <button onclick="setExecWindow(1)" class="exec-time-btn" data-hours="1" style="
+      padding:8px 16px;
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:8px;color:#64748b;
+      font-family:'Syne',sans-serif;
+      font-size:11px;font-weight:700;
+      letter-spacing:0.08em;cursor:pointer;
+      transition:all 200ms ease;">
+                        1 HOUR
+                    </button>
+
+                    <button onclick="setExecWindow(24)" class="exec-time-btn active-time-btn" data-hours="24" style="
+      padding:8px 16px;
+      background:rgba(0,212,255,0.12);
+      border:1px solid rgba(0,212,255,0.30);
+      border-radius:8px;color:#00d4ff;
+      font-family:'Syne',sans-serif;
+      font-size:11px;font-weight:700;
+      letter-spacing:0.08em;cursor:pointer;
+      transition:all 200ms ease;">
+                        24 HOURS
+                    </button>
+
+                    <button onclick="setExecWindow(168)" class="exec-time-btn" data-hours="168" style="
+      padding:8px 16px;
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:8px;color:#64748b;
+      font-family:'Syne',sans-serif;
+      font-size:11px;font-weight:700;
+      letter-spacing:0.08em;cursor:pointer;
+      transition:all 200ms ease;">
+                        7 DAYS
+                    </button>
+
+                    <button onclick="setExecWindow(720)" class="exec-time-btn" data-hours="720" style="
+      padding:8px 16px;
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:8px;color:#64748b;
+      font-family:'Syne',sans-serif;
+      font-size:11px;font-weight:700;
+      letter-spacing:0.08em;cursor:pointer;
+      transition:all 200ms ease;">
+                        30 DAYS
+                    </button>
+
+                    <!-- Active label -->
+                    <span id="exec-window-label" style="
+          font-family:'Syne',sans-serif;
+          font-size:10px;font-weight:700;
+          letter-spacing:0.10em;
+          padding:4px 10px;
+          border-radius:999px;
+          color:#00d4ff;
+          background:rgba(0,212,255,0.10);
+          border:1px solid rgba(0,212,255,0.20)">
+                        24H
+                    </span>
+                </div>
+
+                <div class="exec-hero risk-low" id="exec-hero-card">
+                    <div class="exec-risk-title">Overall Risk Level</div>
+                    <div class="exec-risk-badge-wrap low" id="exec-risk-badge-wrap">
+                        <div class="exec-risk-badge low" id="exec-risk-badge">LOW</div>
+                    </div>
+                    <div class="exec-risk-sublabel" id="exec-risk-sublabel" style="margin-bottom: 24px;">System is
+                        operating normally</div>
+                </div>
+
+                <div class="exec-stats-grid">
+                    <div class="exec-stat-card">
+                        <div class="exec-stat-label">Total Incidents Today</div>
+                        <div class="exec-stat-value" id="exec-incident-total">0</div>
+                        <div class="exec-stat-body" id="exec-incident-trend">Analyzing...</div>
+                    </div>
+                    <div class="exec-stat-card">
+                        <div class="exec-stat-label">Top Attack Category</div>
+                        <div class="exec-stat-value" id="exec-top-category" style="font-size: 28px;">None</div>
+                        <div class="exec-stat-body">Most frequent alert type</div>
+                    </div>
+                    <div class="exec-stat-card">
+                        <div class="exec-stat-label">Trend Analysis</div>
+                        <div class="exec-stat-value" id="exec-trend-value" style="font-size: 28px;">STABLE</div>
+                        <div class="exec-stat-body" id="exec-trend-sentence">Risk trend is stable.</div>
+                    </div>
+                </div>
+
+                <div class="exec-chart-card">
+                    <div class="section-header">
+                        <h3 class="section-title">Incident Severity Breakdown</h3>
+                    </div>
+                    <div class="exec-chart-container">
+                        <canvas id="exec-severity-chart"></canvas>
+                    </div>
+                </div>
+                <!-- Download Report Button -->
+                <!-- Place at bottom of Executive mode -->
+                <div style="
+  text-align:center;
+  margin-top:24px;
+  padding-top:24px;
+  border-top:1px solid rgba(255,255,255,0.06)">
+
+                    <div style="
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;color:#475569;
+    margin-bottom:16px">
+                        Export current executive summary
+                        as a PDF report
+                    </div>
+
+                    <button onclick="generateAndDownloadReport()" style="
+      padding:14px 40px;
+      background:rgba(0,212,255,0.10);
+      border:2px solid rgba(0,212,255,0.30);
+      border-radius:12px;
+      color:#00d4ff;
+      font-family:'Syne',sans-serif;
+      font-size:14px;font-weight:700;
+      letter-spacing:0.10em;
+      cursor:pointer;
+      transition:all 200ms ease;" onmouseover="
+      this.style.background=
+        'rgba(0,212,255,0.20)';
+      this.style.transform='scale(1.02)'" onmouseout="
+      this.style.background=
+        'rgba(0,212,255,0.10)';
+      this.style.transform='scale(1)'">
+                        📄 DOWNLOAD EXECUTIVE REPORT
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODE 1: ANALYST MODE                       -->
+        <!-- ========================================== -->
+        <div id="analyst-mode-content" style="display:none">
+            <div id="analyst-scan-top" style="
+  text-align:center;
+  padding:32px 24px 24px">
+
+                <!-- TWO BUTTONS SIDE BY SIDE -->
+                <div style="
+    display:flex;
+    justify-content:center;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:12px">
+
+                    <!-- SCAN NETWORK -->
+                    <button id="analyst-main-scan-btn" onclick="runAnalystFullScan()" style="
+        display:inline-flex;
+        align-items:center;gap:10px;
+        padding:20px 48px;
+        background:linear-gradient(
+          135deg,
+          rgba(0,212,255,0.18),
+          rgba(0,212,255,0.05));
+        border:2px solid #00d4ff;
+        border-radius:14px;
+        color:#00d4ff;
+        font-family:'Syne',sans-serif;
+        font-size:17px;font-weight:700;
+        letter-spacing:0.08em;
+        cursor:pointer;
+        box-shadow:
+          0 0 28px rgba(0,212,255,0.2);
+        transition:all 0.3s ease">
+                        🔍 SCAN NETWORK
+                    </button>
+
+                    <!-- ATTACK SIMULATOR -->
+                    <button onclick="toggleAttackPanel()" id="attack-sim-btn" style="
+        display:inline-flex;
+        align-items:center;gap:10px;
+        padding:20px 48px;
+        background:linear-gradient(
+          135deg,
+          rgba(167,139,250,0.18),
+          rgba(167,139,250,0.05));
+        border:2px solid #a78bfa;
+        border-radius:14px;
+        color:#a78bfa;
+        font-family:'Syne',sans-serif;
+        font-size:17px;font-weight:700;
+        letter-spacing:0.08em;
+        cursor:pointer;
+        box-shadow:
+          0 0 28px rgba(167,139,250,0.2);
+        transition:all 0.3s ease">
+                        🧪 ATTACK SIMULATOR
+                    </button>
+                </div>
+
+                <!-- STATUS LINE -->
+                <div style="
+    font-family:'Space Grotesk',sans-serif;
+    font-size:12px;color:#475569;
+    margin-bottom:16px">
+                    Last scan:
+                    <span id="analyst-last-scan">—</span>
+                    &nbsp;·&nbsp;
+                    <span id="analyst-scan-status-text" style="color:#00d4ff">Ready</span>
+                </div>
+
+                <!-- PILLS -->
+                <div style="
+    display:flex;
+    justify-content:center;
+    gap:10px;flex-wrap:wrap">
+                    <div style="
+      padding:6px 14px;
+      background:rgba(0,212,255,0.08);
+      border:1px solid rgba(0,212,255,0.2);
+      border-radius:8px;
+      font-family:'Space Grotesk',sans-serif;
+      font-size:12px;color:#94a3b8">
+                        🌐 Hosts: <span id="analyst-hosts-pill" style="color:#00d4ff;font-weight:700">
+                            —</span>
+                    </div>
+                    <div style="
+      padding:6px 14px;
+      background:rgba(239,68,68,0.08);
+      border:1px solid rgba(239,68,68,0.2);
+      border-radius:8px;
+      font-family:'Space Grotesk',sans-serif;
+      font-size:12px;color:#94a3b8">
+                        ⚠️ Suspicious:
+                        <span id="analyst-suspicious-pill" style="color:#ef4444;font-weight:700">
+                            —</span>
+                    </div>
+                    <div style="
+      padding:6px 14px;
+      background:rgba(16,185,129,0.08);
+      border:1px solid rgba(16,185,129,0.2);
+      border-radius:8px;
+      font-family:'Space Grotesk',sans-serif;
+      font-size:12px;color:#94a3b8">
+                        ✓ Safe:
+                        <span id="analyst-safe-pill" style="color:#10b981;font-weight:700">
+                            —</span>
+                    </div>
+                </div>
+
+                <!-- SCAN PROGRESS -->
+                <div id="analyst-main-progress" style="display:none;margin-top:20px">
+                    <div style="
+      height:3px;
+      background:rgba(255,255,255,0.06);
+      border-radius:2px;overflow:hidden;
+      max-width:500px;margin:0 auto">
+                        <div id="analyst-main-bar" style="height:100%;width:0%;
+          background:linear-gradient(
+            90deg,#00d4ff,#a78bfa);
+          border-radius:2px;
+          transition:width 1s ease">
+                        </div>
+                    </div>
+                    <div id="analyst-main-status" style="margin-top:8px;
+        font-family:'Space Grotesk',sans-serif;
+        font-size:12px;color:#00d4ff;
+        text-align:center">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATTACK SIMULATOR DROPDOWN PANEL -->
+            <div id="attack-sim-panel" style="
+    display:none;
+    margin:0 24px 20px;
+    padding:20px;
+    background:rgba(167,139,250,0.05);
+    border:1px solid rgba(167,139,250,0.2);
+    border-radius:16px">
+
+                <div style="
+    display:grid;
+    grid-template-columns:
+      repeat(4,1fr);
+    gap:12px;
+    margin-bottom:16px">
+
+                    <button onclick="runFloatingAttack(
+        'server_flood')" class="attack-float-btn" style="
+        padding:16px 8px;
+        background:rgba(239,68,68,0.08);
+        border:1px solid
+          rgba(239,68,68,0.25);
+        border-radius:12px;
+        color:#f0f4f8;cursor:pointer;
+        font-family:'Space Grotesk',
+          sans-serif;
+        text-align:center;
+        transition:all 0.2s ease">
+                        <div style="font-size:24px;
+        margin-bottom:8px">🌊</div>
+                        <div style="font-weight:700;
+        color:#ef4444;font-size:12px">
+                            Server Flood
+                        </div>
+                        <div style="font-size:10px;
+        color:#475569;margin-top:4px">
+                            DDoS Attack — T1498
+                        </div>
+                    </button>
+
+                    <button onclick="runFloatingAttack(
+        'network_spy')" class="attack-float-btn" style="
+        padding:16px 8px;
+        background:rgba(0,212,255,0.08);
+        border:1px solid
+          rgba(0,212,255,0.25);
+        border-radius:12px;
+        color:#f0f4f8;cursor:pointer;
+        font-family:'Space Grotesk',
+          sans-serif;
+        text-align:center;
+        transition:all 0.2s ease">
+                        <div style="font-size:24px;
+        margin-bottom:8px">🕵️</div>
+                        <div style="font-weight:700;
+        color:#00d4ff;font-size:12px">
+                            Network Spy
+                        </div>
+                        <div style="font-size:10px;
+        color:#475569;margin-top:4px">
+                            Port Scanning — T1046
+                        </div>
+                    </button>
+
+                    <button onclick="runFloatingAttack(
+        'brute_force')" class="attack-float-btn" style="
+        padding:16px 8px;
+        background:rgba(245,158,11,0.08);
+        border:1px solid
+          rgba(245,158,11,0.25);
+        border-radius:12px;
+        color:#f0f4f8;cursor:pointer;
+        font-family:'Space Grotesk',
+          sans-serif;
+        text-align:center;
+        transition:all 0.2s ease">
+                        <div style="font-size:24px;
+        margin-bottom:8px">🔑</div>
+                        <div style="font-weight:700;
+        color:#f59e0b;font-size:12px">
+                            Password Guesser
+                        </div>
+                        <div style="font-size:10px;
+        color:#475569;margin-top:4px">
+                            Brute Force — T1110
+                        </div>
+                    </button>
+
+                    <button onclick="runFloatingAttack(
+        'dns_tunnel')" class="attack-float-btn" style="
+        padding:16px 8px;
+        background:rgba(167,139,250,0.08);
+        border:1px solid
+          rgba(167,139,250,0.25);
+        border-radius:12px;
+        color:#f0f4f8;cursor:pointer;
+        font-family:'Space Grotesk',
+          sans-serif;
+        text-align:center;
+        transition:all 0.2s ease">
+                        <div style="font-size:24px;
+        margin-bottom:8px">📡</div>
+                        <div style="font-weight:700;
+        color:#a78bfa;font-size:12px">
+                            Hidden Signals
+                        </div>
+                        <div style="font-size:10px;
+        color:#475569;margin-top:4px">
+                            DNS Tunneling — T1071
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Progress -->
+                <div id="attack-float-progress" style="display:none">
+                    <div style="
+      height:3px;
+      background:rgba(255,255,255,0.06);
+      border-radius:2px;overflow:hidden">
+                        <div id="attack-float-bar" style="height:100%;width:0%;
+          background:linear-gradient(
+            90deg,#a78bfa,#ef4444);
+          border-radius:2px;
+          transition:width 0.5s ease">
+                        </div>
+                    </div>
+                    <div id="attack-float-status" style="font-family:'Space Grotesk',
+        sans-serif;font-size:12px;
+        color:#a78bfa;margin-top:6px;
+        text-align:center">
+                    </div>
+                </div>
+
+                <!-- Result -->
+                <div id="attack-float-result" style="display:none;margin-top:12px;
+      padding:12px;
+      background:rgba(16,185,129,0.08);
+      border:1px solid
+        rgba(16,185,129,0.25);
+      border-radius:10px;
+      font-family:'Space Grotesk',sans-serif;
+      font-size:12px;color:#10b981;
+      text-align:center">
+                </div>
+            </div>
+
+            <!-- NETWORK SCANNER RESULTS -->
+            <!-- Creative display area -->
+            <div id="analyst-scan-results-panel" style="
+    display:none;
+    margin:0 24px 24px;
+    background:rgba(0,212,255,0.04);
+    border:1px solid rgba(0,212,255,0.15);
+    border-radius:16px;
+    overflow:hidden">
+
+                <!-- Header -->
+                <div style="
+    padding:16px 20px;
+    border-bottom:1px solid 
+      rgba(255,255,255,0.06);
+    display:flex;
+    align-items:center;
+    justify-content:space-between">
+                    <div style="
+      font-family:'Syne',sans-serif;
+      font-size:14px;font-weight:700;
+      color:#f0f4f8;
+      letter-spacing:0.05em">
+                        📡 LIVE NETWORK MAP
+                    </div>
+                    <div id="analyst-scan-summary" style="
+        font-family:'Space Grotesk',
+          sans-serif;
+        font-size:12px;color:#475569">
+                    </div>
+                </div>
+
+                <!-- Results grid -->
+                <div id="analyst-results-grid" style="
+      padding:16px;
+      display:grid;
+      grid-template-columns:
+        repeat(auto-fill,minmax(280px,1fr));
+      gap:10px;
+      max-height:320px;
+      overflow-y:auto">
+                </div>
+            </div>
+            <div id="analyst-kpi-section" class="kpi-row" style="display:none;opacity:0;transition:opacity 600ms ease">
+                <div class="kpi-card neutral">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap cyan">🔵</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value cyan" id="kpi-total"
+                            style="font-family: 'Arial Black', Arial, sans-serif; font-weight: 900;">0</div>
+                        <div class="kpi-label">TOTAL FLOWS</div>
+                        <div class="kpi-sublabel">All time</div>
+                        <div class="kpi-bar">
+                            <div class="kpi-bar-fill" style="width:100%; background:var(--accent)"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card high">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap red">🔴</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value red" id="kpi-high"
+                            style="font-family: 'Arial Black', Arial, sans-serif; font-weight: 900;">0</div>
+                        <div class="kpi-label">HIGH SEVERITY</div>
+                        <div class="kpi-sublabel">All time</div>
+                        <div class="kpi-bar">
+                            <div class="kpi-bar-fill" style="width:100%; background:var(--high)"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card medium">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap orange">🟡</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value orange" id="kpi-medium"
+                            style="font-family: 'Arial Black', Arial, sans-serif; font-weight: 900;">0</div>
+                        <div class="kpi-label">MEDIUM SEVERITY</div>
+                        <div class="kpi-sublabel">All time</div>
+                        <div class="kpi-bar">
+                            <div class="kpi-bar-fill" style="width:100%; background:var(--medium)"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card low">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap green">🟢</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value green" id="kpi-low"
+                            style="font-family: 'Arial Black', Arial, sans-serif; font-weight: 900;">0</div>
+                        <div class="kpi-label">LOW SEVERITY</div>
+                        <div class="kpi-sublabel">All time</div>
+                        <div class="kpi-bar">
+                            <div class="kpi-bar-fill" style="width:100%; background:var(--low)"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="kpi-card neutral">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap purple">⚡</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value white" id="kpi-avg-risk"
+                            style="font-family: 'Arial Black', 'JetBrains Mono', monospace; font-size: 36px; font-weight: 900;">
+                            0.0</div>
+                        <div class="kpi-label">RISK SCORE (30M) <span class="kpi-trend up" id="kpi-risk-trend"
+                                style="display:inline-block; margin-left:4px">---</span></div>
+                        <div class="kpi-sublabel">Last 30 min</div>
+                    </div>
+                </div>
+                <div class="kpi-card neutral">
+                    <div class="kpi-top">
+                        <div class="kpi-icon-wrap cyan">📅</div>
+                    </div>
+                    <div class="kpi-bottom">
+                        <div class="kpi-value cyan" id="kpi-today"
+                            style="font-family: 'Arial Black', Arial, sans-serif; font-weight: 900;">0</div>
+                        <div class="kpi-label">DETECTIONS TODAY</div>
+                        <div class="kpi-sublabel">Last 24 hours</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyst-actions-section"
+                style="margin-bottom:16px;display:none;opacity:0;transition:opacity 600ms ease">
+
+                <div style="
+    font-family:'Syne',sans-serif;
+    font-size:12px;font-weight:700;
+    letter-spacing:0.12em;color:#475569;
+    text-transform:uppercase;
+    padding:0 4px;margin-bottom:12px">
+                    ⚡ Security Actions
+                </div>
+
+                <div style="
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px">
+
+                    <!-- IP LOOKUP -->
+                    <div style="
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:14px;padding:20px">
+
+                        <div style="
+        font-family:'Syne',sans-serif;
+        font-size:12px;font-weight:700;
+        letter-spacing:0.10em;
+        color:#00d4ff;margin-bottom:6px">
+                            🔍 IP LOOKUP
+                        </div>
+                        <div style="
+        font-family:'Space Grotesk',
+          sans-serif;
+        font-size:12px;color:#475569;
+        margin-bottom:14px">
+                            Investigate any IP address instantly
+                        </div>
+                        <input id="ip-lookup-input" type="text" placeholder="e.g. 185.220.101.45" style="
+          width:100%;padding:10px 14px;
+          background:rgba(255,255,255,0.05);
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#f0f4f8;
+          font-family:'JetBrains Mono',
+            monospace;
+          font-size:13px;margin-bottom:10px;
+          box-sizing:border-box;outline:none;" onkeydown="
+          if(event.key==='Enter')
+            lookupIP()" />
+                        <button onclick="lookupIP()" style="
+          width:100%;padding:10px;
+          background:rgba(0,212,255,0.10);
+          border:1px solid
+            rgba(0,212,255,0.25);
+          border-radius:8px;color:#00d4ff;
+          font-family:'Syne',sans-serif;
+          font-size:12px;font-weight:700;
+          letter-spacing:0.08em;
+          cursor:pointer;">
+                            INVESTIGATE IP →
+                        </button>
+                        <div id="ip-lookup-result" style="display:none;margin-top:14px;border-radius:10px;overflow:hidden;border:1px solid rgba(0,212,255,0.2);background:rgba(0,212,255,0.04);">
+                            <div id="ip-lookup-loading" style="padding:16px;text-align:center;font-family:'Space Grotesk',sans-serif;font-size:12px;color:#00d4ff;display:none;">
+                                <span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Looking up IP...
+                            </div>
+                            <div id="ip-lookup-content" style="display:none;">
+                                <div style="padding:12px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+                                    <span id="ip-result-addr" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#f0f4f8;"></span>
+                                    <span id="ip-result-badge" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;"></span>
+                                </div>
+                                <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Country</div><div id="ip-result-country" style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:#94a3b8;"></div></div>
+                                    <div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">City</div><div id="ip-result-city" style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:#94a3b8;"></div></div>
+                                    <div style="grid-column:span 2"><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">ISP / Organization</div><div id="ip-result-isp" style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:#94a3b8;"></div></div>
+                                    <div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Threat Score</div><div id="ip-result-score" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;"></div></div>
+                                    <div><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Times Seen</div><div id="ip-result-seen" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#a78bfa;"></div></div>
+                                    <div style="grid-column:span 2"><div style="font-family:'Space Grotesk',sans-serif;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Last Attack</div><div id="ip-result-mitre" style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:#94a3b8;"></div></div>
+                                </div>
+                                <div style="padding:0 14px 12px;"><button id="ip-block-btn" style="width:100%;padding:8px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:8px;color:#ff4d6d;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.08em;cursor:pointer;">🚫 ADD TO BLOCKLIST</button></div>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <!-- REPORT A THREAT -->
+                    <div style="
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:14px;padding:20px">
+
+                        <div style="
+        font-family:'Syne',sans-serif;
+        font-size:12px;font-weight:700;
+        letter-spacing:0.10em;
+        color:#ff9f43;margin-bottom:6px">
+                            ⚠ REPORT A THREAT
+                        </div>
+                        <div style="
+        font-family:'Space Grotesk',
+          sans-serif;
+        font-size:12px;color:#475569;
+        margin-bottom:14px">
+                            Manually submit a threat detection
+                        </div>
+                        <input id="threat-ip" type="text" placeholder="Source IP address" style="
+          width:100%;padding:10px 14px;
+          background:rgba(255,255,255,0.05);
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#f0f4f8;
+          font-family:'JetBrains Mono',
+            monospace;
+          font-size:13px;margin-bottom:8px;
+          box-sizing:border-box;
+          outline:none;" />
+                        <select id="threat-category" style="
+          width:100%;padding:10px 14px;
+          background:#0f1f35;
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#94a3b8;
+          font-family:'Space Grotesk',
+            sans-serif;
+          font-size:13px;margin-bottom:8px;
+          box-sizing:border-box;outline:none;">
+                            <option value="dos">
+                                Server Flood
+                            </option>
+                            <option value="portscan">
+                                Network Scan
+                            </option>
+                            <option value="bruteforce">
+                                Brute Force Login
+                            </option>
+                            <option value="suspdns">
+                                DNS Tunneling
+                            </option>
+                            <option value="lateral">
+                                Lateral Movement
+                            </option>
+                        </select>
+                        <select id="threat-severity" style="
+          width:100%;padding:10px 14px;
+          background:#0f1f35;
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#94a3b8;
+          font-family:'Space Grotesk',
+            sans-serif;
+          font-size:13px;margin-bottom:8px;
+          box-sizing:border-box;outline:none;">
+                            <option value="high">
+                                High Severity
+                            </option>
+                            <option value="medium">
+                                Medium Severity
+                            </option>
+                            <option value="low">
+                                Low Severity
+                            </option>
+                        </select>
+                        <input id="threat-notes" type="text" placeholder="Notes (optional)" style="
+          width:100%;padding:10px 14px;
+          background:rgba(255,255,255,0.05);
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#f0f4f8;
+          font-family:'Space Grotesk',
+            sans-serif;
+          font-size:13px;margin-bottom:10px;
+          box-sizing:border-box;outline:none;" />
+                        <button onclick="submitThreatReport()" style="
+          width:100%;padding:10px;
+          background:rgba(255,159,67,0.10);
+          border:1px solid
+            rgba(255,159,67,0.25);
+          border-radius:8px;color:#ff9f43;
+          font-family:'Syne',sans-serif;
+          font-size:12px;font-weight:700;
+          letter-spacing:0.08em;
+          cursor:pointer;">
+                            SUBMIT THREAT REPORT
+                        </button>
+                        <div id="threat-report-status" style="
+             margin-top:8px;
+             font-family:'Space Grotesk',
+               sans-serif;
+             font-size:12px;
+             text-align:center;
+             min-height:18px">
+                        </div>
+                    </div>
+
+                    <!-- IP BLOCKLIST -->
+                    <div style="
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:14px;padding:20px">
+
+                        <div style="
+        font-family:'Syne',sans-serif;
+        font-size:12px;font-weight:700;
+        letter-spacing:0.10em;
+        color:#ff4d6d;margin-bottom:6px">
+                            🚫 IP BLOCKLIST
+                        </div>
+                        <div style="
+        font-family:'Space Grotesk',
+          sans-serif;
+        font-size:12px;color:#475569;
+        margin-bottom:14px">
+                            Block suspicious IP addresses
+                        </div>
+                        <input id="block-ip" type="text" placeholder="IP address to block" onkeydown="if(event.key==='Enter')addToBlocklist()" style="
+          width:100%;padding:10px 14px;
+          background:rgba(255,255,255,0.05);
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#f0f4f8;
+          font-family:'JetBrains Mono',
+            monospace;
+          font-size:13px;margin-bottom:8px;
+          box-sizing:border-box;outline:none;" />
+                        <select id="block-reason" style="
+          width:100%;padding:10px 14px;
+          background:#0f1f35;
+          border:1px solid
+            rgba(255,255,255,0.10);
+          border-radius:8px;color:#94a3b8;
+          font-family:'Space Grotesk',
+            sans-serif;
+          font-size:13px;margin-bottom:10px;
+          box-sizing:border-box;outline:none;">
+                            <option value="Malicious">
+                                Malicious Activity
+                            </option>
+                            <option value="Suspicious">
+                                Suspicious Behaviour
+                            </option>
+                            <option value="Brute Force">
+                                Brute Force Attempt
+                            </option>
+                            <option value="Port Scan">
+                                Port Scanning
+                            </option>
+                            <option value="Manual Block">
+                                Manual Block
+                            </option>
+                        </select>
+                        <button onclick="addToBlocklist()" style="
+          width:100%;padding:10px;
+          background:rgba(255,77,109,0.10);
+          border:1px solid
+            rgba(255,77,109,0.25);
+          border-radius:8px;color:#ff4d6d;
+          font-family:'Syne',sans-serif;
+          font-size:12px;font-weight:700;
+          letter-spacing:0.08em;
+          cursor:pointer;margin-bottom:12px;">
+                            🚫 ADD TO BLOCKLIST
+                        </button>
+                        <div id="blocklist-suggestions" style="display:none;margin-bottom:10px;"></div>
+                        <div id="blocklist-container" style="
+             max-height:150px;
+             overflow-y:auto">
+                            <div style="
+          font-family:'Space Grotesk',
+            sans-serif;
+          font-size:12px;color:#334155;
+          text-align:center;padding:10px">
+                                No IPs blocked yet
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+
+
+            <!-- Device Risk History Panel -->
+            <div class="section-card" id="device-history-section">
+                <div class="section-toggle-header" id="device-history-header" onclick="toggleDeviceHistory()"
+                    style="cursor: pointer;">
+
+                    <div style="display:flex;
+                       align-items:center;gap:10px">
+                        <span style="
+                      color:#00d4ff;
+                      font-size:14px">📊</span>
+                        <span class="section-toggle-title">
+                            DEVICE RISK HISTORY
+                        </span>
+                        <span style="
+                      font-family:'Space Grotesk',sans-serif;
+                      font-size:12px;
+                      color:#475569;
+                      font-weight:400">
+                            Per-device threat activity and risk trends
+                        </span>
+                    </div>
+
+                    <span id="device-history-arrow" style="
+                          color:#475569;
+                          font-size:14px;
+                          transition: transform 300ms ease;
+                          transform: rotate(0deg);">
+                        ▼
+                    </span>
+                </div>
+
+                <!-- Collapsible content -->
+                <div id="device-history-content" style="display:none;
+                            overflow:hidden;
+                            transition: all 300ms ease;">
+                    <div class="device-grid" id="device-grid">
+                        <!-- cards populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div id="analyst-charts-section" style="display:none;opacity:0;transition:opacity 600ms ease">
+                <div class="analytics-row-1">
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Threat Level Gauge</h3>
+                        </div>
+                        <div class="gauge-container"
+                            style="display:flex; justify-content:center; align-items:center; height:100%;">
+                            <canvas id="gauge-canvas" width="400" height="250"
+                                style="max-width:100%; height:auto;"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Risk Trend (30m)</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="analyst-trend-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Severity Distribution</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="analyst-severity-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-row-2">
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Protocol Distribution</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="analyst-protocol-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Top Source IPs</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="analyst-src-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="section-header">
+                            <h3 class="section-title">Top Destination IPs</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="analyst-dst-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyst-detections-section" class="card table-card"
+                style="display:none;opacity:0;transition:opacity 600ms ease">
+                <div class="table-controls">
+                    <div class="section-header" style="margin:0">
+                        <h3 class="section-title">Live Detections</h3>
+                    </div>
+                    <div style="display:flex; gap:var(--space-2)">
+                        <input type="text" id="table-search" placeholder="Search IP or Rule..." class="search-input">
+                        <select id="table-filter-sev" class="filter-select">
+                            <option value="all">All Severities</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table" id="detection-table">
+                        <thead>
+                            <tr>
+                                <th class="table-th" data-sort="timestamp">Time ↕</th>
+                                <th class="table-th" data-sort="src_ip">Src IP ↕</th>
+                                <th class="table-th" data-sort="dst_ip">Dst IP ↕</th>
+                                <th class="table-th" data-sort="protocol">Protocol ↕</th>
+                                <th class="table-th" data-sort="port">Port ↕</th>
+                                <th class="table-th" data-sort="severity">Severity ↕</th>
+                                <th class="table-th" data-sort="final_score">Risk ↕</th>
+                                <th class="table-th">Confidence</th>
+                                <th class="table-th">Status</th>
+                                <th class="table-th">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- JS injected rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CONTACT US SECTION                         -->
+        <!-- ========================================== -->
+        <section id="contact-section" class="contact-section">
+            <div class="contact-container">
+                <div class="contact-header" style="text-align: center;">
+                    <h2 class="section-title" style="justify-content: center; border: none; margin-bottom: 8px;">GET IN
+                        TOUCH</h2>
+                    <p class="text-body" style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">Have
+                        questions about integrating VNT into your SOC? Need custom deployment support? Reach out.</p>
+                </div>
+
+                <div class="contact-grid">
+                    <div class="contact-info">
+                        <div class="info-card">
+                            <div class="info-icon">📧</div>
+                            <div>
+                                <h4>Email Us Direct</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="760519155b05030606190402360018025b061a17021019041b581a1915171a">[email&#160;protected]</a></p>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-icon">⚡</div>
+                            <div>
+                                <h4>Response Time</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">SLA: Under 15
+                                    minutes</p>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-icon">🔒</div>
+                            <div>
+                                <h4>Secure Comms</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">PGP Key
+                                    Available</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="contact-form" class="contact-form">
+                        <div class="form-group">
+                            <label for="c-name"
+                                style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Analyst
+                                Name / ID</label>
+                            <input type="text" id="c-name" required placeholder="e.g. SOC-OP-402"
+                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-default); border-radius:8px; color:#fff;">
+                        </div>
+                        <div class="form-group" style="margin-top:16px;">
+                            <label for="c-email"
+                                style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Secure
+                                Email</label>
+                            <input type="email" id="c-email" required placeholder="name@domain.com"
+                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-default); border-radius:8px; color:#fff;">
+                        </div>
+                        <div class="form-group" style="margin-top:16px;">
+                            <label for="c-subject"
+                                style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Subject</label>
+                            <select id="c-subject" required
+                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-default); border-radius:8px; color:#fff;">
+                                <option value="" disabled selected>Select routing...</option>
+                                <option value="support">Technical Support</option>
+                                <option value="integration">API Integration Help</option>
+                                <option value="feedback">Detection Feedback (False Positive)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-top:16px;">
+                            <label for="c-message"
+                                style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">Message
+                                / Intel</label>
+                            <textarea id="c-message" rows="4" required placeholder="Describe the issue or intel..."
+                                style="width:100%; padding:10px 14px; background:rgba(255,255,255,0.03); border:1px solid var(--border-default); border-radius:8px; color:#fff; resize:none;"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" id="btn-submit-contact"
+                            style="width:100%; margin-top:20px; text-align:center;">Transmit Securely</button>
+                        <div id="contact-success" class="contact-success hidden"
+                            style="margin-top:16px; padding:12px; background:rgba(0,212,170,0.1); border:1px solid rgba(0,212,170,0.3); border-radius:8px; text-align:center;">
+                            <span style="color:var(--low); font-size:13px; font-weight:600;">✓ Message securely
+                                transmitted. Tier 2 is reviewing.</span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER BAR -->
+    <footer class="main-footer"
+        style="margin-top: 60px; padding: 24px 48px; border-top: 1px solid var(--border-default); background: var(--bg-card); backdrop-filter: blur(16px);">
+        <div class="footer-content"
+            style="display:flex; justify-content:space-between; align-items:center; max-width:var(--max-width); margin:0 auto;">
+            <div class="footer-left" style="display:flex; align-items:center;">
+                <span class="logo-mark"
+                    style="font-size:10px; padding:4px 8px; border-radius:6px; background:var(--accent-dim); color:var(--accent); font-weight:700;">VNT</span>
+                <span style="font-size:12px; color:var(--text-muted); margin-left:12px;">© 2026 Visual Network Tracker.
+                    All rights reserved.</span>
+            </div>
+            <div class="footer-right" style="font-size:12px; color:var(--text-muted);">
+                <span>System Status: <strong style="color:var(--low); font-weight:600;">Operational</strong></span>
+                <span style="margin:0 12px; opacity:0.3">|</span>
+                <span>v3.4.1 (Stable)</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Explainability Drawer (Right Slide-in) -->
+    <div id="explain-drawer" class="drawer">
+        <div class="drawer-header">
+            <h2>Detailed Analysis</h2>
+            <button class="btn-close" id="drawer-close">×</button>
+        </div>
+        <div class="drawer-content" id="drawer-body">
+            <!-- JS dynamically populates -->
+        </div>
+    </div>
+
+    <!-- Simple Flashcard Overlay -->
+    <div id="simple-flashcard" class="modal-overlay hidden">
+        <div class="flashcard-container">
+            <div class="flashcard-inner" id="flashcard-flipper">
+                <div class="flashcard-front">
+                    <h2 id="fc-front-title">What happened?</h2>
+                    <p id="fc-front-summary"></p>
+                    <button class="btn btn-primary" id="fc-flip-btn">Flip to learn more ↺</button>
+                    <button class="btn btn-outline fc-close">Close</button>
+                </div>
+                <div class="flashcard-back">
+                    <h3>The Details</h3>
+                    <p id="fc-back-details"></p>
+                    <div class="analogy-box">
+                        <strong>Think of it like:</strong>
+                        <p id="fc-back-analogy"></p>
+                    </div>
+                    <div class="cve-box"
+                        style="margin-top: 12px; margin-bottom: 12px; font-size: 0.9rem; color: var(--text-muted); border-left: 3px solid var(--accent); padding-left: 8px;">
+                        <span id="fc-back-cve"></span>
+                    </div>
+                    <strong>What to do:</strong>
+                    <ul id="fc-back-actions"></ul>
+                    <button class="btn btn-outline" id="fc-unflip-btn">↺ Back</button>
+                    <button class="btn btn-primary fc-close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simulator Debrief Modal -->
+    <div id="debrief-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="deb-title">Simulation Debrief</h2>
+            <div class="debrief-grid">
+                <div class="deb-stat">Grade: <span id="deb-grade"></span></div>
+                <div class="deb-stat">Time to Detect: <span id="deb-time"></span>s</div>
+                <div class="deb-stat">Total Alerts: <span id="deb-alerts"></span></div>
+            </div>
+            <h3>What Just Happened</h3>
+            <p id="deb-happened"></p>
+            <h3>Real World Impact</h3>
+            <p id="deb-impact"></p>
+            <h3>How To Protect Against It</h3>
+            <ul id="deb-protection"></ul>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="deb-close">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threat Report Overlay -->
+    <div id="report-modal" class="modal-overlay hidden report-print-area">
+        <div class="modal-content report-content">
+            <div class="report-header">
+                <h2>Visual Network Tracker — Security Report</h2>
+                <p>Date: <span id="rep-date"></span> | Period: Last 24 hours</p>
+                <button class="btn-close no-print" id="rep-close">×</button>
+            </div>
+
+            <div class="report-body">
+                <div class="rep-status-banner" id="rep-status-banner">
+                    Status: <span id="rep-status-text"></span>
+                </div>
+
+                <h3>Executive Summary</h3>
+                <p id="rep-summary"></p>
+
+                <div id="rep-concern-section" class="hidden">
+                    <h3>Top Concern</h3>
+                    <p id="rep-concern-text"></p>
+                </div>
+
+                <h3>Threat Breakdown</h3>
+                <table class="rep-table">
+                    <thead>
+                        <tr>
+                            <th>Threat Type</th>
+                            <th>Count</th>
+                            <th>First Seen</th>
+                            <th>Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rep-breakdown-body"></tbody>
+                </table>
+
+                <h3>Recommended Actions</h3>
+                <ul id="rep-recommendations"></ul>
+
+                <p class="rep-positive" id="rep-positive"></p>
+            </div>
+
+            <div class="modal-actions no-print">
+                <button class="btn btn-outline" id="rep-copy">Copy to Clipboard</button>
+                <button class="btn btn-primary" id="rep-print">Print Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guided Tour Overlay -->
+    <div id="tour-overlay" class="tour-overlay hidden">
+        <div class="tour-spotlight" id="tour-spotlight"></div>
+        <div class="tour-tooltip" id="tour-tooltip">
+            <p id="tour-text">Welcome to Visual Network Tracker...</p>
+            <div class="tour-controls">
+                <span class="tour-step-counter" id="tour-counter">1 of 6</span>
+                <div>
+                    <button class="btn btn-text" id="tour-skip">Skip</button>
+                    <button class="btn btn-outline" id="tour-prev">Prev</button>
+                    <button class="btn btn-primary" id="tour-next">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Error Help Overlay -->
+    <div id="connection-error-overlay" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2 style="color: var(--high); margin-bottom: 16px;">⚠️ CONNECTION LOST</h2>
+            <div
+                style="background: rgba(255,77,109,0.1); padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(255,77,109,0.3);">
+                <strong style="color: var(--high);">THE PROBLEM:</strong><br>
+                You are opening index.html directly in the browser.<br>
+                This means no data loads because the Flask backend is not running.
+            </div>
+            <h3 style="margin-bottom: 12px;">THE FIX — DO THIS EVERY TIME:</h3>
+            <ol style="padding-left: 20px; line-height: 1.6; color: var(--text-secondary);">
+                <li>Open a terminal (Command Prompt or PowerShell on Windows)</li>
+                <li>Navigate to your project folder: <code style="color: #fff">cd path/to/VisualNetworkTracker</code>
+                </li>
+                <li>Install dependencies (only needed once): <code
+                        style="color: #fff">pip install flask flask-cors python-dateutil</code></li>
+                <li>Run the backend:<br><code style="color: #fff">cd backend</code><br><code
+                        style="color: #fff">python app.py</code></li>
+                <li>You will see:<br><span style="color: #00d4aa">"DB initialized."</span><br><span
+                        style="color: #00d4aa">"Running on http://0.0.0.0:5000"</span></li>
+                <li>NOW open the frontend:<br>Open <code style="color: #fff">frontend/index.html</code> in your
+                    browser<br>OR go to <code style="color: #fff">http://localhost:5000</code> if Flask serves the HTML
+                </li>
+                <li>The green LIVE indicator confirms connection.</li>
+            </ol>
+            <div class="modal-actions" style="margin-top: 24px;">
+                <button class="btn btn-outline"
+                    onclick="document.getElementById('connection-error-overlay').classList.add('hidden')">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-modal" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.75);
+  backdrop-filter:blur(4px);
+  z-index:9999;
+  align-items:center;
+  justify-content:center;">
+
+        <div style="
+    background:#0f1f35;
+    border:1px solid 
+      rgba(255,255,255,0.10);
+    border-radius:16px;
+    padding:32px;
+    width:360px;
+    text-align:center;
+    box-shadow:0 24px 60px 
+      rgba(0,0,0,0.6);">
+
+            <div id="reset-modal-content">
+
+                <div style="font-size:36px;
+           margin-bottom:16px">↺</div>
+
+                <div style="
+        font-family:'Syne',sans-serif;
+        font-size:18px;font-weight:700;
+        color:#f0f4f8;margin-bottom:8px">
+                    Reset Database?
+                </div>
+
+                <div style="
+        font-family:'Space Grotesk',
+          sans-serif;
+        font-size:13px;color:#64748b;
+        margin-bottom:24px;
+        line-height:1.6">
+                    All detections and traffic data
+                    will be cleared. Fresh data will
+                    start generating immediately.
+                </div>
+
+                <div style="display:flex;
+           gap:10px">
+                    <button onclick="closeReset()" style="
+            flex:1;padding:12px;
+            background:rgba(255,255,255,0.05);
+            border:1px solid 
+              rgba(255,255,255,0.10);
+            border-radius:10px;
+            color:#64748b;
+            font-family:'Syne',sans-serif;
+            font-size:13px;font-weight:700;
+            cursor:pointer;">
+                        Cancel
+                    </button>
+                    <button onclick="confirmReset()" id="confirm-reset-btn" style="
+            flex:1;padding:12px;
+            background:rgba(255,77,109,0.12);
+            border:1px solid 
+              rgba(255,77,109,0.30);
+            border-radius:10px;
+            color:#ff4d6d;
+            font-family:'Syne',sans-serif;
+            font-size:13px;font-weight:700;
+            cursor:pointer;">
+                        Reset Now
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        async function runSimpleScan() {
+            var progress = document.getElementById('simple-scan-progress');
+            var bar = document.getElementById('simple-scan-bar');
+            var msg = document.getElementById('simple-scan-message');
+            if (progress) progress.style.display = 'block';
+            if (bar) bar.style.width = '0%';
+            var stages = [
+                { msg: '🛰️ Connecting...', pct: '15%', delay: 0 },
+                { msg: '📡 Discovering devices...', pct: '35%', delay: 900 },
+                { msg: '🔍 Scanning threats...', pct: '58%', delay: 2000 },
+                { msg: '⚡ Checking database...', pct: '78%', delay: 3200 },
+                { msg: '✅ Almost done...', pct: '93%', delay: 4400 }
+            ];
+            stages.forEach(function (s) {
+                setTimeout(function () {
+                    if (bar) {
+                        bar.style.transition = 'width 1s ease';
+                        bar.style.width = s.pct;
+                    }
+                    if (msg) {
+                        msg.style.opacity = '0';
+                        setTimeout(function () {
+                            msg.textContent = s.msg;
+                            msg.style.opacity = '1';
+                        }, 150);
+                    }
+                }, s.delay);
+            });
+            var done = false;
+            var scanStart = Date.now();
+            setTimeout(function () {
+                if (!done) { done = true; finishScan({}); }
+            }, 9000);
+            try {
+                var r = await fetch('/api/quick_scan');
+                var data = await r.json();
+                if (!done) {
+                    done = true;
+                    var rem = Math.max(0, 6000 - (Date.now() - scanStart));
+                    setTimeout(function () { finishScan(data); }, rem);
+                }
+            } catch (e) {
+                if (!done) { done = true; finishScan({}); }
+            }
+            function finishScan(data) {
+                if (bar) bar.style.width = '100%';
+                if (msg) {
+                    msg.textContent = '✅ Scan complete!';
+                    msg.style.color = '#10b981';
+                }
+                setTimeout(function () {
+                    if (progress) progress.style.display = 'none';
+                    if (bar) bar.style.width = '0%';
+                    if (msg) {
+                        msg.textContent = 'Checking your network...';
+                        msg.style.color = '';
+                    }
+                    var hero = document.getElementById(
+                        'simple-scan-hero');
+                    if (hero) hero.style.display = 'none';
+                    var toShow = [
+                        'splash-section',
+                        'simple-scan-bar-top',
+                        'simple-mode-content',
+                        'simple-health-banner',
+                        'simple-incident-list',
+                        'simple-story-feed'
+                    ];
+                    toShow.forEach(function (id, i) {
+                        setTimeout(function () {
+                            var el = document.getElementById(id);
+                            if (!el) return;
+                            el.style.display = 'block';
+                            el.style.opacity = '0';
+                            el.style.transition = 'opacity 0.5s ease';
+                            setTimeout(function () {
+                                el.style.opacity = '1';
+                            }, 50);
+                        }, i * 150);
+                    });
+                    var ls = document.getElementById(
+                        'simple-last-scan');
+                    if (ls) ls.textContent =
+                        new Date().toLocaleTimeString();
+                    // Load KPI data
+                    fetch('/api/kpi')
+                        .then(function(r){return r.json();})
+                        .then(function(d){
+                          var inc=document.getElementById(
+                            'simple-incident-count');
+                          if(inc) inc.textContent=
+                            (d.total||0).toLocaleString();
+                          var health=document.getElementById(
+                            'simple-health-pct');
+                          var hval=Math.round(100-(d.avg_risk||0));
+                          if(health) health.textContent=hval+'%';
+                          var threat=document.getElementById(
+                            'simple-threat-name');
+                          if(threat) threat.textContent=
+                            d.top_attack||'None detected';
+                          var last=document.getElementById(
+                            'simple-last-threat');
+                          if(last) last.textContent=
+                            d.last_threat?
+                            new Date(d.last_threat)
+                            .toLocaleTimeString():'None';
+                          var title=document.getElementById(
+                            'simple-health-title');
+                          if(title){
+                            title.textContent=
+                              d.status_simple||
+                              'YOUR NETWORK IS SAFE';
+                            title.style.color=
+                              d.status_color||'#10b981';
+                          }
+                        }).catch(function(){});
+
+                    // Load system stats
+                    fetch('/api/system_stats')
+                      .then(function(r){return r.json();})
+                      .then(function(d){
+                        var hosts=document.getElementById(
+                          'splash-active-hosts');
+                        if(hosts) hosts.textContent=
+                          d.active_hosts||'—';
+                        var packets=document.getElementById(
+                          'splash-packets');
+                        if(packets) packets.textContent=
+                          d.packets||'—';
+                        var data=document.getElementById(
+                          'splash-data');
+                        if(data) data.textContent=
+                          d.data_transferred||'—';
+                        var uptime=document.getElementById(
+                          'splash-uptime');
+                        if(uptime) uptime.textContent=
+                          d.uptime_str||'—';
+                      }).catch(function(){});
+
+                    // Load alerts & story feed
+                    fetch('/api/alerts?limit=10')
+                      .then(function(r){return r.json();})
+                      .then(function(alerts){
+                        var arr=Array.isArray(alerts)?
+                          alerts:(alerts.alerts||[]);
+
+                        // Incidents list
+                        var container=
+                          document.getElementById(
+                            'incidents-container');
+                        if(container && arr.length>0){
+                          container.innerHTML='';
+                          arr.forEach(function(a){
+                            var d=document.createElement('div');
+                            d.style.cssText='padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05);font-family:Space Grotesk,sans-serif;font-size:13px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center';
+                            var sev=a.severity||'low';
+                            var col=sev==='high'?'#ef4444':sev==='medium'?'#f59e0b':'#10b981';
+                            var icon=sev==='high'?'🔴':sev==='medium'?'🟡':'🟢';
+                            d.innerHTML='<span>'+icon+' '+(a.attack_name||'Alert')+' from '+(a.src_ip||'—')+'</span><span style="color:'+col+';font-size:11px;font-weight:700">'+(a.time_ago||'')+'</span>';
+                            container.appendChild(d);
+                          });
+                          var cnt=document.getElementById('incidents-count');
+                          if(cnt) cnt.textContent=arr.length;
+                        }
+
+                        // Story feed
+                        var feed=document.getElementById(
+                          'story-feed-panel');
+                        if(feed && arr.length>0){
+                          feed.innerHTML='';
+                          arr.slice(0,5).forEach(function(a){
+                            var d=document.createElement('div');
+                            d.style.cssText='padding:12px 16px;margin-bottom:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;font-family:Space Grotesk,sans-serif;font-size:13px;color:#94a3b8;line-height:1.5';
+                            var sev=a.severity||'low';
+                            var icon=sev==='high'?'🔴':sev==='medium'?'🟡':'🟢';
+                            d.innerHTML=icon+' <strong style="color:#f0f4f8">'+(a.attack_name||'Network Event')+'</strong> from <span style="color:#00d4ff">'+(a.src_ip||'unknown')+'</span> → '+(a.dst_ip||'unknown')+' <span style="color:#475569;font-size:11px">'+(a.time_ago||'')+'</span><br><span style="font-size:11px;color:#475569">'+(a.description||'')+'</span>';
+                            feed.appendChild(d);
+                          });
+                        }
+                      }).catch(function(){});
+
+                    // Fix rescan button
+                    var rescanBtn=document.getElementById(
+                        'simple-scan-bar-top');
+                    if(rescanBtn) {
+                        rescanBtn.style.display='block';
+                    }
+                }, 600);
+            }
+        }
+
+async function runSimpleRescan() {
+  var bar=document.getElementById(
+    'simple-scan-bar');
+  var msg=document.getElementById(
+    'simple-scan-message');
+  var progress=document.getElementById(
+    'simple-scan-progress');
+
+  // Flash cards to dashes
+  ['simple-incident-count',
+   'simple-health-pct',
+   'simple-threat-name',
+   'simple-last-threat'].forEach(
+    function(id){
+      var el=document.getElementById(id);
+      if(!el) return;
+      el.style.transition='opacity 0.3s ease';
+      el.style.opacity='0';
+      setTimeout(function(){
+        el.textContent='—';
+        el.style.opacity='0.2';
+      },300);
+    });
+
+  // Fade out feeds
+  ['simple-incident-list',
+   'simple-story-feed'].forEach(
+    function(id){
+      var el=document.getElementById(id);
+      if(el){
+        el.style.transition='opacity 0.3s ease';
+        el.style.opacity='0';
+      }
+    });
+
+  setTimeout(function(){
+    if(progress) progress.style.display='block';
+    if(bar) bar.style.width='0%';
+  },400);
+
+  var stages=[
+    {msg:'🔄 Reinitializing...',pct:'15%',delay:500},
+    {msg:'📡 Re-scanning devices...',pct:'38%',delay:1400},
+    {msg:'🔍 Checking new threats...',pct:'62%',delay:2500},
+    {msg:'⚡ Updating data...',pct:'82%',delay:3500},
+    {msg:'✅ Refreshing...',pct:'93%',delay:4500}
+  ];
+
+  stages.forEach(function(s){
+    setTimeout(function(){
+      if(bar){bar.style.transition='width 0.9s ease';bar.style.width=s.pct;}
+      if(msg){msg.style.opacity='0';setTimeout(function(){msg.textContent=s.msg;msg.style.opacity='1';},125);}
+    },s.delay);
+  });
+
+  var done=false;
+  var scanStart=Date.now();
+  setTimeout(function(){if(!done){done=true;finishRescan({});}},10000);
+
+  try {
+    var r=await fetch('/api/quick_scan');
+    var data=await r.json();
+    if(!done){
+      done=true;
+      var rem=Math.max(0,6000-(Date.now()-scanStart));
+      setTimeout(function(){finishRescan(data);},rem);
+    }
+  } catch(e){if(!done){done=true;finishRescan({});}}
+
+  function finishRescan(data){
+    if(bar) bar.style.width='100%';
+    if(msg){msg.textContent='✅ Updated!';msg.style.color='#10b981';}
+    setTimeout(function(){
+      if(progress) progress.style.display='none';
+      if(bar) bar.style.width='0%';
+      if(msg){msg.textContent='Checking your network...';msg.style.color='';}
+
+      var ls=document.getElementById('simple-last-scan');
+      if(ls) ls.textContent=new Date().toLocaleTimeString();
+
+      // Fade feeds back in
+      ['simple-incident-list',
+       'simple-story-feed'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.style.transition='opacity 0.5s ease';el.style.opacity='1';}
+      });
+
+      // Reload all data
+      fetch('/api/kpi')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var countUp=function(id,end,suffix){
+            var el=document.getElementById(id);
+            if(!el) return;
+            el.style.opacity='0';
+            el.style.transform='translateY(10px)';
+            el.style.transition='opacity 0.5s ease,transform 0.5s ease';
+            setTimeout(function(){
+              el.style.opacity='1';
+              el.style.transform='translateY(0)';
+              var t0=null;
+              function cu(ts){
+                if(!t0)t0=ts;
+                var p=Math.min((ts-t0)/1200,1);
+                var e=1-Math.pow(1-p,3);
+                el.textContent=Math.floor(e*end).toLocaleString()+(suffix||'');
+                if(p<1)requestAnimationFrame(cu);
+                else el.textContent=end.toLocaleString()+(suffix||'');
+              }
+              requestAnimationFrame(cu);
+            },50);
+          };
+
+          // Incidents count
+          countUp('simple-incident-count',
+            d.total||0,'');
+
+          // Health percent (100 - avg_risk)
+          var healthVal=Math.round(
+            100-(d.avg_risk||0));
+          countUp('simple-health-pct',
+            healthVal,'%');
+
+          // Threat name
+          var threat=document.getElementById('simple-threat-name');
+          if(threat){
+            threat.style.opacity='0';
+            setTimeout(function(){
+              threat.textContent=d.top_attack||
+                'None detected';
+              threat.style.opacity='1';
+            },400);
+          }
+
+          // Last threat time/label
+          var last=document.getElementById('simple-last-threat');
+          if(last){
+            last.style.opacity='0';
+            setTimeout(function(){
+              last.textContent=d.last_threat||
+                'None';
+              last.style.opacity='1';
+            },600);
+          }
+
+          // Update health title messaging
+          var title=document.getElementById(
+            'simple-health-title');
+          if(title){
+            title.style.opacity='0';
+            setTimeout(function(){
+              if(healthVal>=70){
+                title.textContent=
+                  '✅ YOUR NETWORK IS SAFE';
+                title.style.color='#10b981';
+              } else if(healthVal>=40){
+                title.textContent=
+                  '⚠️ SOME RISKS DETECTED';
+                title.style.color='#f59e0b';
+              } else {
+                title.textContent=
+                  '🚨 NETWORK UNDER THREAT';
+                title.style.color='#ef4444';
+              }
+              title.style.opacity='1';
+            },400);
+          }
+        }).catch(function(){});
+
+      // Reload feeds
+      fetch('/api/alerts?limit=10')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var list=document.getElementById('simple-incident-list');
+          if(!list) return;
+          var alerts=d.alerts||d||[];
+          list.innerHTML='';
+          alerts.forEach(function(a){
+            var item=document.createElement('div');
+            item.style.cssText='padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05);font-family:Space Grotesk,sans-serif;font-size:13px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center';
+            var sev=a.severity||'low';
+            var col=sev==='high'?'#ef4444':sev==='medium'?'#f59e0b':'#10b981';
+            item.innerHTML='<span>'+(a.src_ip||'—')+' → '+(a.dst_
+
+<!-- Block Remove Confirm Modal -->
+<div id="block-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="background:#0f1729;border:1px solid rgba(255,77,109,0.3);border-radius:16px;padding:28px;max-width:320px;width:90%;text-align:center;">
+        <div style="font-size:36px;margin-bottom:12px;">🚫</div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:#f0f4f8;margin-bottom:8px;">Remove from Blocklist?</div>
+        <div id="block-confirm-ip" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#ff4d6d;margin-bottom:20px;"></div>
+        <div style="display:flex;gap:10px;">
+            <button onclick="cancelBlockRemove()" style="flex:1;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#64748b;font-family:'Space Grotesk',sans-serif;font-size:13px;cursor:pointer;">Cancel</button>
+            <button id="block-confirm-btn" style="flex:1;padding:10px;background:rgba(255,77,109,0.12);border:1px solid rgba(255,77,109,0.3);border-radius:8px;color:#ff4d6d;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Remove</button>
+        </div>
+    </div>
+</div>
