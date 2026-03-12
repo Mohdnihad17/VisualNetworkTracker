@@ -132,6 +132,4 @@ This project is licensed under the MIT License.
 
 ---
 
-<div align="center">
-  <b>Built with ❤️ for cybersecurity accessibility</b>
-</div>
+
