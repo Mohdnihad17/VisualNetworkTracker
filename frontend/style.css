@@ -121,7 +121,7 @@ body {
 /* Base Typography */
 .text-display {
   font-family: var(--font-ui);
-  font-size: 36px;
+  font-size: 31px;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -130,7 +130,7 @@ body {
 
 .text-h1 {
   font-family: var(--font-ui);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -138,7 +138,7 @@ body {
 
 .text-h2 {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -147,7 +147,7 @@ body {
 
 .text-body {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.6;
   color: var(--text-secondary);
@@ -155,14 +155,14 @@ body {
 
 .text-mono {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .text-label {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -180,7 +180,7 @@ body {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .btn-primary {
@@ -2335,4 +2335,48 @@ input:checked+.slider:before {
 .live-dot.warning {
   background: #ff9f43;
   animation: live-pulse 1.5s infinite;
+}
+
+/* Mobile Responsive Fixes */
+@media (max-width: 768px) {
+  /* 1. 4 KPI splash cards stack in 2x2 grid */
+  .splash-grid, .kpi-row, .exec-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* 2. Navbar header wrapping and too tall */
+  .topbar {
+    height: auto !important;
+    flex-direction: column !important;
+    padding: 16px !important;
+  }
+  .nav-left, .nav-center, .nav-right {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-bottom: 12px !important;
+  }
+  .nav-right {
+    flex-wrap: wrap !important;
+    margin-bottom: 0 !important;
+    gap: 12px !important;
+  }
+  
+  /* 4. KPI card numbers scale down */
+  .kpi-value, .kpi-number, .splash-number, .exec-stat-value, .gauge-value {
+    font-size: 24px !important;
+  }
+  
+  /* 5. Mode buttons cut off */
+  .mode-toggle {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    padding: 4px !important;
+  }
+  .mode-btn {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+  }
 }
